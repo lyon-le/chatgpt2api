@@ -20,6 +20,21 @@ die() {
   exit 1
 }
 
+is_tty_available() {
+  [ -r /dev/tty ] && [ -w /dev/tty ]
+}
+
+prompt_tty() {
+  local prompt="$1"
+  local value
+  is_tty_available || die "Interactive input requires a TTY. Re-run with -y."
+  printf '%s' "$prompt" >/dev/tty
+  if ! IFS= read -r value </dev/tty; then
+    die "Failed to read interactive input."
+  fi
+  printf '%s' "$value"
+}
+
 usage() {
   cat <<EOF
 Usage:
@@ -111,10 +126,7 @@ confirm() {
   if [ "$YES" = "true" ]; then
     return 0
   fi
-  printf '%s [y/N] ' "$1"
-  if ! read -r answer; then
-    die "Confirmation required. Re-run with -y to skip prompts."
-  fi
+  answer="$(prompt_tty "$1 [y/N] ")"
   case "$answer" in
     y|Y|yes|YES) return 0 ;;
     *) die "Cancelled." ;;
